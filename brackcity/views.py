@@ -43,7 +43,6 @@ def check_pw(password, h):
 
 @app.route('/')
 def main():
-    players = query_db('select name from users')
     return render_template('base.html')
 
 
@@ -52,57 +51,38 @@ def logout():
     session.pop('logged_in', None)
     return redirect(url_for('main'))
 
-@app.route('/login', methods=['POST', 'GET'])
-def login():
-    if request.method == 'POST':
-        username = str(request.form['username'])
-        password = str(request.form['password'])
-        q = query_db('select name, pw_hash from users where username=?',
-                     (username,),
-                     one=True)
-        if q:
-            if check_pw(password, q['pw_hash']):
-                session['logged_in'] = True
-                session['name'] = q['name']
-                return redirect(url_for('main'))
-        return redirect(url_for('login'))
-    else:
-        return """<form action='/login' method='post'>
-                  <label>Username</label><input type='text' name='username'></input>
-                  <label>Password</label><input type='text' name='password'></input>
-                  <input type='submit' value='login'></input></form>"""
 
-@app.route('/newuser', methods=['POST', 'GET'])
+@app.route('/login', methods=['POST'])
+def login():
+    username = str(request.form['username'])
+    password = str(request.form['password'])
+    q = query_db('select name, pw_hash from users where username=?',
+                 (username,),
+                 one=True)
+    if q:
+        if check_pw(password, q['pw_hash']):
+            session['logged_in'] = True
+            session['name'] = q['name']
+            return redirect(url_for('main'))
+    return redirect(url_for('login'))
+
+
+@app.route('/newuser', methods=['POST'])
 def create_user():
     if request.method == 'POST':
         name = str(request.form['name'])
         username = str(request.form['username'])
         password = hash_pw(str(request.form['password']))
-        g.db.execute('insert into users (name, username, pw_hash) values (?, ?, ?)', (name, username, password))
-        g.db.commit()
+        # Check if the username exists
+        q = query_db('select id from users where username=?',
+                     (username,),
+                     one=True)
+        if not q:
+            g.db.execute("""insert into users (name, username, pw_hash)
+                                       values (?, ?, ?)""",
+                         (name, username, password))
+            g.db.commit()
         return redirect(url_for('main'))
-    else:
-        return """<form action='/newuser' method='post'>
-                  <label>Name</label><input type='text' name='name'></input>
-                  <label>Username</label><input type='text' name='username'></input>
-                  <label>Password</label><input type='text' name='password'></input>
-                  <input type='submit' value='Create account'></input></form>"""
-
-@app.route('/add', methods=['POST', 'GET'])
-def add_player():
-    if request.method == 'POST':
-        name = str(request.form['username'])
-        with open('players.json', 'r') as f:
-            obj = json.loads(f.read())
-        if name != "":
-            obj["players"].append(name)
-        with open('players.json', 'w') as f:
-            obj = f.write(json.dumps(obj))
-        return redirect(url_for('main'))
-    else:
-        return """<form action='/add' method='post'>
-                  <input type='text' name='username'></input>
-                  <input type='submit' value='Add player'></input></form>"""
 
 
 @app.route('/game', methods=['POST', 'GET'])

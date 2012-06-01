@@ -20,7 +20,7 @@
 
   <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
 
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet/less" type="text/css" href="/static/style.less">
 
   <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
 
@@ -28,18 +28,13 @@
        Modernizr enables HTML5 elements & feature detects for optimal performance.
        Create your own custom Modernizr build: www.modernizr.com/download/ -->
   <script src="/static/js/libs/modernizr-2.5.3.min.js"></script>
+  <script type="text/javascript" src="/static/js/libs/less-1.3.0.min.js"></script>
 </head>
 <body>
   <!-- Prompt IE 6 users to install Chrome Frame. Remove this if you support IE 6.
        chromium.org/developers/how-tos/chrome-frame-getting-started -->
   <!--[if lt IE 7]><p class=chromeframe>Your browser is <em>ancient!</em> <a href="http://browsehappy.com/">Upgrade to a different browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.</p><![endif]-->
   <header>
-
-  {% if not session.logged_in %}
-   <a href='/newuser'>Create account</a> or <a href='/login'>login</a>
-  {% else %}
-   Hello, {{session.name}}! <a href='/logout'>Log out</a>
-  {% endif %}
   
   </header>
   <div role="main">
@@ -47,6 +42,51 @@
   {% endblock %}
   </div>
   <footer>
+
+    {% if not session.logged_in %}
+     <p><a href='/newuser'>Create account</a> or <a href='/login'>login</a></p>
+    {% else %}
+     <p>Hello, {{session.name}}! <a href='/logout'>Log out</a></p>
+    {% endif %}
+  <div id='login'>
+    <div class='section'>
+    <h1>Login</h1>
+    <p>If you dare.</p>
+    <form action='/login' method='post'>
+      <ul>
+      <li>
+      <label>Username</label><input type='text' name='username'></input>
+      </li>
+      <li>
+      <label>Password</label><input type='text' name='password'></input>
+      </li>
+      <li>
+      <input type='submit' value='login'></input>
+      </li>
+      </ul>
+    </form>
+    </div>
+    <div class='section'>
+    <h1>Create an account</h1>
+    <p>Everyone has one, bro.</p>
+    <form action='/newuser' method='post'>
+      <ul>
+      <li>
+      <label>Name</label><input type='text' name='name'></input>
+      </li>
+      <li>
+      <label>Username</label><input type='text' name='username'></input>
+      </li>
+      <li>
+      <label>Password</label><input type='text' name='password'></input>
+      </li>
+      <li>
+      <input type='submit' value='Create account'></input>
+      </li>
+      </ul>
+    </form>
+    </div>
+  </div>
 
   </footer>
 
