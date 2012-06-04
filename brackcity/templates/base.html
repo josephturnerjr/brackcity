@@ -36,6 +36,11 @@
   <!--[if lt IE 7]><p class=chromeframe>Your browser is <em>ancient!</em> <a href="http://browsehappy.com/">Upgrade to a different browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.</p><![endif]-->
   <header>
   
+    {% if not session.logged_in %}
+     <p><a href='/newuser'>Create account</a> or <a href='/login'>login</a></p>
+    {% else %}
+     <p>Hello, {{session.user_name}}! <a href='/user/{{session.user_id}}'>Your profile</a> <a href='/logout'>Log out</a></p>
+    {% endif %}
   </header>
   <div role="main">
   {% block content %}
@@ -43,11 +48,6 @@
   </div>
   <footer>
 
-    {% if not session.logged_in %}
-     <p><a href='/newuser'>Create account</a> or <a href='/login'>login</a></p>
-    {% else %}
-     <p>Hello, {{session.name}}! <a href='/logout'>Log out</a></p>
-    {% endif %}
   <div id='login'>
     <div class='section'>
     <h1>Login</h1>

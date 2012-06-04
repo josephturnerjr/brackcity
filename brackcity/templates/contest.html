@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>{{contest.name}}</h1>
+  <h2>Players</h2>
+  {% if players %}
+  <ul>
+    {% for p in players%}
+      <li>{{p.name}}</li>
+    {% endfor %} 
+  </ul>
+  {% else %}
+  <p>No players yet</p>
+  {% endif %}
+  {% if session.logged_in and session.user_id == contest.user_id %}
+    <a href="#">Add players</a>
+  {% endif %}
+  <h2>Games</h2>
+  {% if games %}
+  <ul>
+    {% for g in games %}
+      <li>{{g.date}}</li>
+    {% endfor %} 
+  </ul>
+  {% else %}
+    <p>No games yet</p>
+  {% endif %}
+  {% if session.logged_in and session.user_id == contest.user_id %}
+    <a href="#">Add games</a>
+  {% endif %}
+{% endblock %}

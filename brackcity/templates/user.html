@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Contests for user {{user.name}}</h1>
+  {% if contests %}
+  <ul>
+    {% for c in contests %}
+      <li><a href="/contest/{{c.id}}">{{c.name}}</a></li>
+    {% endfor %} 
+  </ul>
+  {% else %}
+  <p>No contests yet</p>
+  {% endif %}
+  {% if session.logged_in and session.user_id == user.id %}
+    <a href="/contest">Create new contest</a>
+  {% endif %}
+{% endblock %}

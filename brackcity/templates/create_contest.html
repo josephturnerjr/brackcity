@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Create a new contest</h1>
+  {% if not session.logged_in %}
+    <p>You must be <a href='#'>logged in</a> to create a contest.</p>
+  {% else %}
+    <form action='/contest' method='post'>
+      <label>Contest name</label><input type='text' name='contest_name'></input>
+      <input type='hidden' name='user_id' value='{{session.user_id}}'></input>
+      <input type='submit' value='Create contest'></input>
+    </form>
+  {% endif %}
+{% endblock %}
