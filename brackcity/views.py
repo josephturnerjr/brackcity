@@ -155,6 +155,38 @@ def players(contest_id):
         return render_template('players.html', contest=contest, players=players)
 
 
+@app.route('/contest/<contest_id>/games', methods=['POST', 'GET'])
+def games(contest_id):
+    contest_id = int(contest_id)
+    contest = query_db('select name, id, user_id from contests where id=?',
+                 (contest_id,), one=True)
+    if not contest:
+        abort(404)
+    if contest["user_id"] != session.get("user_id"):
+        abort(401)
+    if request.method == 'POST':
+        winner = int(request.form['player_one'])
+        loser = int(request.form['player_two'])
+        date = request.form['game_date']
+        cur = g.db.cursor()
+        cur.execute("""insert into games (contest_id, date)
+                                   values (?, ?)""",
+                     (contest_id, date))
+        game_id = cur.lastrowid
+        g.db.execute("""insert into scores (game_id, player_id, score)
+                                   values (?, ?, ?)""",
+                     (game_id, loser, 0.0))
+        g.db.execute("""insert into scores (game_id, player_id, score)
+                                   values (?, ?, ?)""",
+                     (game_id, winner, 1.0))
+        g.db.commit()
+        return redirect(url_for('games', contest_id=contest_id))
+    else:
+        players = query_db('select id, name, user_id from players where contest_id=?',
+                       (contest_id,))
+        return render_template('games.html', contest=contest, players=players)
+
+
 @app.route('/game', methods=['POST', 'GET'])
 def add_game():
     return """<form action='/game' method='post'>

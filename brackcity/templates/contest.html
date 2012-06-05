@@ -25,6 +25,6 @@
     <p>No games yet</p>
   {% endif %}
   {% if session.logged_in and session.user_id == contest.user_id %}
-    <a href="#">Add games</a>
+    <a href="/contest/{{contest.id}}/games">Add games</a>
   {% endif %}
 {% endblock %}

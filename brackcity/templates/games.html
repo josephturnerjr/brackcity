@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Add game to {{contest.name}}</h1>
+  {% if players %}
+  <h2>Who played?</h2>
+  <form action='/contest/{{contest.id}}/games' method='post'>
+    <select name='player_one'>
+      {% for p in players%}
+        <option value='{{p.id}}'>{{p.name}}</option>
+      {% endfor %} 
+    </select>
+    <select name='player_two'>
+      {% for p in players%}
+        <option value='{{p.id}}'>{{p.name}}</option>
+      {% endfor %} 
+    </select>
+    <label>Date</label><input type='text' name='game_date'></input>
+    <input type='submit' value='Add game'></input>
+  </form>
+  {% else %}
+    <p>You'll need to <a href="/contest/{{contest.id}}/players">add players</a> first.</p>
+  {% endif %}
+{% endblock %}

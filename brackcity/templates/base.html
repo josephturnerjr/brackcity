@@ -35,11 +35,15 @@
        chromium.org/developers/how-tos/chrome-frame-getting-started -->
   <!--[if lt IE 7]><p class=chromeframe>Your browser is <em>ancient!</em> <a href="http://browsehappy.com/">Upgrade to a different browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.</p><![endif]-->
   <header>
-  
     {% if not session.logged_in %}
-     <p><a href='/newuser'>Create account</a> or <a href='/login'>login</a></p>
+      <p><a href='/newuser'>Create account</a> or 
+        <a href='#' onclick="$('#login').show(); return false;">login</a>
+      </p>
     {% else %}
-     <p>Hello, {{session.user_name}}! <a href='/user/{{session.user_id}}'>Your profile</a> <a href='/logout'>Log out</a></p>
+      <p>Hello, {{session.user_name}}! 
+        <a href='/user/{{session.user_id}}'>Go to your profile</a> or
+        <a href='/logout'>Log out</a>
+      </p>
     {% endif %}
   </header>
   <div role="main">
@@ -47,56 +51,50 @@
   {% endblock %}
   </div>
   <footer>
-
-  <div id='login'>
-    <div class='section'>
-    <h1>Login</h1>
-    <p>If you dare.</p>
-    <form action='/login' method='post'>
-      <ul>
-      <li>
-      <label>Username</label><input type='text' name='username'></input>
-      </li>
-      <li>
-      <label>Password</label><input type='text' name='password'></input>
-      </li>
-      <li>
-      <input type='submit' value='login'></input>
-      </li>
-      </ul>
-    </form>
+    <div id='login' style='display: none;'>
+      <div class='section'>
+      <h1>Login</h1>
+      <p>If you dare.</p>
+      <form action='/login' method='post'>
+        <ul>
+        <li>
+        <label>Username</label><input type='text' name='username'></input>
+        </li>
+        <li>
+        <label>Password</label><input type='text' name='password'></input>
+        </li>
+        <li>
+        <input type='submit' value='login'></input>
+        </li>
+        </ul>
+      </form>
+      </div>
+      <div class='section'>
+      <h1>Create an account</h1>
+      <p>Everyone has one, bro.</p>
+      <form action='/newuser' method='post'>
+        <ul>
+        <li>
+        <label>Name</label><input type='text' name='name'></input>
+        </li>
+        <li>
+        <label>Username</label><input type='text' name='username'></input>
+        </li>
+        <li>
+        <label>Password</label><input type='text' name='password'></input>
+        </li>
+        <li>
+        <input type='submit' value='Create account'></input>
+        </li>
+        </ul>
+      </form>
+      </div>
     </div>
-    <div class='section'>
-    <h1>Create an account</h1>
-    <p>Everyone has one, bro.</p>
-    <form action='/newuser' method='post'>
-      <ul>
-      <li>
-      <label>Name</label><input type='text' name='name'></input>
-      </li>
-      <li>
-      <label>Username</label><input type='text' name='username'></input>
-      </li>
-      <li>
-      <label>Password</label><input type='text' name='password'></input>
-      </li>
-      <li>
-      <input type='submit' value='Create account'></input>
-      </li>
-      </ul>
-    </form>
-    </div>
-  </div>
-
   </footer>
-
-
   <!-- JavaScript at the bottom for fast page loading -->
-
   <!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if offline -->
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
   <script>window.jQuery || document.write('<script src="js/libs/jquery-1.7.1.min.js"><\/script>')</script>
-
   <!-- scripts concatenated and minified via build script -->
   <script src="js/plugins.js"></script>
   <script src="js/script.js"></script>
