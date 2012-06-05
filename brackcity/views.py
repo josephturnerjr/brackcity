@@ -118,7 +118,7 @@ def create_contest():
         return render_template('create_contest.html')
 
 
-@app.route('/contest/<contest_id>', methods=['POST', 'GET'])
+@app.route('/contest/<contest_id>', methods=['GET'])
 def contest(contest_id):
     contest_id = int(contest_id)
     contest = query_db('select name, id, user_id from contests where id=?',
@@ -130,6 +130,29 @@ def contest(contest_id):
     games = query_db('select id, date from games where contest_id=?',
                      (contest_id,))
     return render_template('contest.html', contest=contest, players=players, games=games)
+
+
+@app.route('/contest/<contest_id>/players', methods=['POST', 'GET'])
+def players(contest_id):
+    contest_id = int(contest_id)
+    contest = query_db('select name, id, user_id from contests where id=?',
+                 (contest_id,), one=True)
+    if not contest:
+        abort(404)
+    if contest["user_id"] != session.get("user_id"):
+        abort(401)
+    if request.method == 'POST':
+        name = request.form['player_name']
+        player_user_id = None#int(request.form['player_id'])
+        g.db.execute("""insert into players (contest_id, name, user_id)
+                                   values (?, ?, ?)""",
+                     (contest_id, name, player_user_id))
+        g.db.commit()
+        return redirect(url_for('players', contest_id=contest_id))
+    else:
+        players = query_db('select id, name, user_id from players where contest_id=?',
+                       (contest_id,))
+        return render_template('players.html', contest=contest, players=players)
 
 
 @app.route('/game', methods=['POST', 'GET'])
