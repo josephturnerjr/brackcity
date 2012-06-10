@@ -27,4 +27,27 @@
   {% if session.logged_in and session.user_id == contest.user_id %}
     <a href="/contest/{{contest.id}}/games">Add games</a>
   {% endif %}
+  {% if players %}
+  <h2>Scorecard</h2>
+  <table>
+    <tr>
+      <th></th>
+      {% for p in players %}
+      <th>{{p.name}}</th>
+      {% endfor %} 
+    </tr>
+    {% for p in players%}
+      <tr>
+        <td>
+        {{p.name}}
+        </td>
+        {% for p in players %}
+        <td>0</td>
+        {% endfor %} 
+      </tr>
+    {% endfor %} 
+  </table>
+  {% else %}
+  <p>No players yet</p>
+  {% endif %}
 {% endblock %}

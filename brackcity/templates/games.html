@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-  <h1>Add game to {{contest.name}}</h1>
+  <h1>Add game to <a href='/contest/{{contest.id}}'>{{contest.name}}</a></h1>
   {% if players %}
   <h2>Who played?</h2>
   <form action='/contest/{{contest.id}}/games' method='post'>
@@ -20,4 +20,14 @@
   {% else %}
     <p>You'll need to <a href="/contest/{{contest.id}}/players">add players</a> first.</p>
   {% endif %}
+  {% if games %}
+    <h2>Existing games</h2>
+    <ul>
+      {% for g in games %}
+        <li>{{g.date}}</li>
+      {% endfor %} 
+    </ul>
+  {%else%}
+    <p>No games yet</p>
+  {%endif%}
 {% endblock %}

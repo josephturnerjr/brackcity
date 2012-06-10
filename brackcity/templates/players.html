@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-  <h1>Add players to {{contest.name}}</h1>
+  <h1>Add players to <a href='/contest/{{contest.id}}'>{{contest.name}}</a></h1>
   {% if players %}
   <h2>Current players</h2>
   <ul>

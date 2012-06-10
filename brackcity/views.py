@@ -49,6 +49,7 @@ def page_not_found(error):
 
 @app.route('/')
 def main():
+    return str(request.environ)
     return render_template('base.html')
 
 
@@ -143,7 +144,7 @@ def players(contest_id):
         abort(401)
     if request.method == 'POST':
         name = request.form['player_name']
-        player_user_id = None#int(request.form['player_id'])
+        player_user_id = None  #int(request.form['player_id'])
         g.db.execute("""insert into players (contest_id, name, user_id)
                                    values (?, ?, ?)""",
                      (contest_id, name, player_user_id))
@@ -168,23 +169,28 @@ def games(contest_id):
         winner = int(request.form['player_one'])
         loser = int(request.form['player_two'])
         date = request.form['game_date']
+        # Add no-date error checking
         cur = g.db.cursor()
         cur.execute("""insert into games (contest_id, date)
                                    values (?, ?)""",
                      (contest_id, date))
         game_id = cur.lastrowid
         g.db.execute("""insert into scores (game_id, player_id, score)
-                                   values (?, ?, ?)""",
+                                    values (?, ?, ?)""",
                      (game_id, loser, 0.0))
         g.db.execute("""insert into scores (game_id, player_id, score)
-                                   values (?, ?, ?)""",
+                                    values (?, ?, ?)""",
                      (game_id, winner, 1.0))
         g.db.commit()
         return redirect(url_for('games', contest_id=contest_id))
     else:
-        players = query_db('select id, name, user_id from players where contest_id=?',
+        players = query_db("""select id, name, user_id from players
+                                                       where contest_id=?""",
                        (contest_id,))
-        return render_template('games.html', contest=contest, players=players)
+        games = query_db('select id, date from games where contest_id=?',
+                         (contest_id,))
+        return render_template('games.html', contest=contest, players=players,
+                               games=games)
 
 
 @app.route('/game', methods=['POST', 'GET'])
