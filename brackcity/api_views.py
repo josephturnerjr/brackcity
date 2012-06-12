@@ -1,6 +1,6 @@
 from brackcity import app
 from flask import (request, redirect, url_for,
-                   render_template, g, session, abort, jsonify)
+                   render_template, g, session, abort, jsonify, json)
 import sqlite3
 from contextlib import closing
 from passlib.hash import sha256_crypt
@@ -54,17 +54,19 @@ def json_response(status=200, message="OK.", data=None):
 
 @app.route('/login', methods=['POST'])
 def login():
-    username = str(request.form['username'])
-    password = str(request.form['password'])
+    try:
+        username = str(request.form['username'])
+        password = str(request.form['password'])
+    except KeyError, e:
+        return json_response(400, "Required argument %s not found" % e.message)
     q = query_db('select id, name, pw_hash from users where username=?',
                  (username,),
                  one=True)
     if q:
         if check_pw(password, q['pw_hash']):
             session_token = uuid.uuid4().hex
-            return json_response(data=session_token)
-    # If login fails, return 401
-    json_response(401, "Authorization required.")
+            return json_response(data={"session_token": session_token})
+    return json_response(401, "Authorization required.")
 
 
 @app.route('/newuser', methods=['POST'])
@@ -92,6 +94,7 @@ def contests():
     contests = query_db('select id, user_id, name from contests')
     return json_response(data=contests)
 
+
 @app.route('/contests/<contest_id>', methods=['GET'])
 def contest(contest_id):
     contest = query_db('select name, id, user_id from contests where id=?',
@@ -111,7 +114,8 @@ def users():
 # List users
 @app.route('/users/<int:user_id>', methods=['GET'])
 def user(user_id):
-    user = query_db('select id, name, username from users where id=?', (user_id,))
+    user = query_db('select id, name, username from users where id=?',
+                    (user_id,), one=True)
     if not user:
         return json_response(404, "No such user")
     return json_response(data=user)
@@ -138,7 +142,8 @@ def user_contests(user_id):
             return json_response(400,
                                  "Required argument %s not found" % e.message)
     else:
-        contests = query_db('select id, name from contests where user_id=?', (user_id,))
+        contests = query_db('select id, name from contests where user_id=?',
+                            (user_id,))
         return json_response(data=contests)
 
 
@@ -233,6 +238,63 @@ def user_contest_player(user_id, contest_id, player_id):
         return json_response()
     else:
         return json_response(data=player)
+
+
+# List and add games
+@app.route('/users/<int:user_id>/contests/<int:contest_id>/games',
+           methods=['POST', 'GET'])
+def user_contest_games(user_id, contest_id):
+    contest = query_db("""select contests.name, contests.id, contests.user_id
+                                          from users, contests
+                                          where (users.id=contests.user_id and
+                                                 users.id=? and
+                                                 contests.id=?)""",
+                       (user_id, contest_id), one=True)
+    if not contest:
+        return json_response(404, 'No such contest')
+    if request.method == 'POST':
+        try:
+            date = request.form['date']
+            try:
+                ranking = json.loads(request.form['ranking'])
+            except ValueError:
+                return json_response(400,
+                                     "Rankings must be a list of players in decreasing order of score")
+            if len(ranking) < 2:
+                return json_response(400,
+                                     "Games must have two or more players")
+            players = query_db("""select id
+                                   from players
+                                   where id in (%s) and
+                                   contest_id = ?""" % (",".join('?' * len(ranking)),),
+                               ranking + [contest_id])
+            if len(players) != len(ranking):
+                return json_response(400, 'Rankings must be for contest players')
+            cur = g.db.cursor()
+            cur.execute("""insert into games (date, contest_id)
+                                        values (?, ?)""",
+                         (date, contest_id))
+            # TODO Fix this
+            '''
+            game_id = cur.lastrowid
+            cur.execute("""insert into scores (game_id, player_id, score)
+                                        values (?, ?, ?)""",
+                         (game_id, loser, 0.0))
+            cur.execute("""insert into scores (game_id, player_id, score)
+                                        values (?, ?, ?)""",
+                         (game_id, winner, 1.0))
+            '''
+            cur.commit()
+            return json_response()
+        except KeyError, e:
+            return json_response(400,
+                                 "Required argument %s not found" % e.message)
+    else:
+        games = query_db("""select id, date from games
+                               where contest_id=?""", (contest_id,))
+        return json_response(data=games)
+
+
 '''
 # Get, update, and delete a participant
 @app.route('/contests/<int:constest_id>/participants/<int:participant_id>', methods=['GET', 'PUT', 'DELETE'])
