@@ -5,6 +5,17 @@ create table users (
   username TEXT not null,
   pw_hash TEXT not null
 );
+create index user_index on users (username);
+
+drop table if exists sessions;
+create table sessions(
+  id integer primary key autoincrement,
+  user_id integer not null,
+  session_id TEXT not null,
+  creation_date TEXT not null
+);
+create index session_id_index on sessions (session_id);
+
 drop table if exists contests;
 create table contests (
   id integer primary key autoincrement,

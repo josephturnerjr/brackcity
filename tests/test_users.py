@@ -9,13 +9,16 @@ class TestUsers(unittest.TestCase):
     def setUp(self):
         self.username = uuid.uuid4().hex
         self.password = uuid.uuid4().hex
-        nu_data = {"name": "Joseph Tester",
+        self.name = "Joseph Tester"
+        nu_data = {"name": self.name,
                    "username": self.username,
                    "password": self.password}
-        requests.post(BASE + "/newuser", data=nu_data).json
+        self.id = requests.post(BASE + "/users", data=nu_data).json["data"]["id"]
 
     def test_user_creation(self):
-        assert(self.username in map(lambda x: x["username"], requests.get(BASE + "/users").json["data"]))
+        user_list = requests.get(BASE + "/users").json["data"]["users"]
+        assert(self.username in map(lambda x: x["username"], user_list))
+        assert(self.name == requests.get(BASE + "/users/%s" % self.id).json["data"]["user"]["name"])
 
     def test_login(self):
         good = {"username": self.username, "password": self.password}
@@ -41,18 +44,17 @@ class TestUserContests(unittest.TestCase):
         nu_data = {"name": self.name,
                    "username": self.username,
                    "password": self.password}
-        requests.post(BASE + "/newuser", data=nu_data).json
+        requests.post(BASE + "/users", data=nu_data).json
 
     def test_users(self):
-        assert(self.username in map(lambda x: x["username"], requests.get(BASE + "/users").json["data"]))
-    
-    def test_user(self):
-        users = requests.get(BASE + "/users").json["data"]
-        my_id = filter(lambda x: x["username"] == self.username, users)[0]["id"]
+        assert(self.username in map(lambda x: x["username"], requests.get(BASE + "/users").json["data"]["users"]))
 
+    def test_user(self):
+        users = requests.get(BASE + "/users").json["data"]["users"]
+        my_id = filter(lambda x: x["username"] == self.username, users)[0]["id"]
         r = requests.get(BASE + "/users/%s" % (my_id))
         assert(r.status_code == 200)
-        assert(r.json["data"]["name"] == self.name)
+        assert(r.json["data"]["user"]["name"] == self.name)
         r = requests.get(BASE + "/users/%s" % ("NOTANID"))
         assert(r.status_code == 404)
         r = requests.get(BASE + "/users/%s" % (0))
