@@ -242,7 +242,7 @@ def user_contest_players(user_id, contest_id):
     if request.method == 'POST':
         check_session_auth(user_id)
         try:
-            name = request.form['player_name']
+            name = request.form['name']
             player_user_id = None  # int(request.form['player_id'])
             cur = g.db.cursor()
             cur.execute("""insert into players (contest_id, name, user_id)
@@ -319,7 +319,10 @@ def user_contest_games(user_id, contest_id):
                 ranking = json.loads(request.form['ranking'])
             except ValueError:
                 return json_response(400,
-                                     "Rankings must be a list of players in decreasing order of score")
+                                     "Rankings must be a list of player ids in decreasing order of score")
+            if not isinstance(ranking, list):
+                return json_response(400,
+                                     "Rankings must be a list of player ids in decreasing order of score")
             if len(ranking) < 2:
                 return json_response(400,
                                      "Games must have two or more players")
@@ -336,15 +339,10 @@ def user_contest_games(user_id, contest_id):
                                         values (?, ?)""",
                          (date, contest_id))
             game_id = cur.lastrowid
-            '''
-            # TODO Fix this
-            cur.execute("""insert into scores (game_id, player_id, score)
-                                        values (?, ?, ?)""",
-                         (game_id, loser, 0.0))
-            cur.execute("""insert into scores (game_id, player_id, score)
-                                        values (?, ?, ?)""",
-                         (game_id, winner, 1.0))
-            '''
+            for i, player in enumerate(ranking):
+                cur.execute("""insert into scores (game_id, player_id, score)
+                                            values (?, ?, ?)""",
+                             (game_id, player, 1.0 / len(ranking)))
             g.db.commit()
             return json_response(data={"id": game_id})
         except KeyError, e:
