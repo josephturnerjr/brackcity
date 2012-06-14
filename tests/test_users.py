@@ -6,7 +6,7 @@ import json
 BASE = "http://127.0.0.1:5000"
 
 
-class TestUsers(unittest.TestCase):
+class TestUserCreation(unittest.TestCase):
     def setUp(self):
         self.username = uuid.uuid4().hex
         self.password = uuid.uuid4().hex
@@ -40,7 +40,7 @@ class TestUsers(unittest.TestCase):
         assert(r.status_code == 400)
 
 
-class TestUserContests(unittest.TestCase):
+class TestUser(unittest.TestCase):
     def setUp(self):
         self.username = uuid.uuid4().hex
         self.password = uuid.uuid4().hex
@@ -66,6 +66,36 @@ class TestUserContests(unittest.TestCase):
         assert(r.status_code == 404)
         r = requests.get(BASE + "/users/%s" % (0), auth=self.auth)
         assert(r.status_code == 404)
+
+class TestUserContest(unittest.TestCase):
+    def setUp(self):
+        self.username = uuid.uuid4().hex
+        self.password = uuid.uuid4().hex
+        self.name = "Joseph Tester"
+        nu_data = {"name": self.name,
+                   "username": self.username,
+                   "password": self.password}
+        self.id = requests.post(BASE + "/users", data=nu_data).json["data"]["id"]
+        good = {"username": self.username, "password": self.password}
+        r = requests.post(BASE + "/login", data=good)
+        self.auth = (r.json["data"]["session_token"], "foo")
+
+    def test_create(self):
+        r = requests.post(BASE + "/users/%s/contests" % self.id)
+        assert(r.status_code == 401)
+        r = requests.post(BASE + "/users/%s/contests" % self.id, auth=self.auth)
+        assert(r.status_code == 400)
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo"}, auth=self.auth)
+        assert(r.status_code == 200)
+        username = uuid.uuid4().hex
+        password = uuid.uuid4().hex
+        name = "Joseph Tester"
+        nu_data = {"name": name,
+                   "username": username,
+                   "password": password}
+        id = requests.post(BASE + "/users", data=nu_data).json["data"]["id"]
+        r = requests.post(BASE + "/users/%s/contests" % id, data={"name": "boo"}, auth=self.auth)
+        assert(r.status_code == 403)
 
 class TestUserContestGames(unittest.TestCase):
     def setUp(self):
