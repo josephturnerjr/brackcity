@@ -10,11 +10,12 @@ from functools import wraps
 
 
 def check_auth(username, password):
-    q = query_db('select user_id from sessions where session_id=?',
+    q = query_db('select user_id, is_admin from sessions where session_id=?',
                  (username,),
                  one=True)
     if q:
         g.auth_user_id = q["user_id"]
+        g.is_user_admin = q["is_admin"]
         return True
     else:
         return False
@@ -39,6 +40,13 @@ def check_session_auth(user_id):
     if user_id != g.auth_user_id:
         abort(403)
 
+def check_session_auth(user_id):
+    if user_id != g.auth_user_id:
+        abort(403)
+
+def check_admin():
+    if not g.is_user_admin:
+        abort(403)
 
 def connect_db():
     return sqlite3.connect(app.config['DATABASE'])
@@ -46,8 +54,16 @@ def connect_db():
 
 def init_db():
     with closing(connect_db()) as db:
+        cur = db.cursor()
         with app.open_resource('schema.sql') as f:
-            db.cursor().executescript(f.read())
+            cur.executescript(f.read())
+        # REMOVE ME
+        cur.execute("""insert into users (name, username, pw_hash)
+                                          values (?, ?, ?)""",
+                            ('Joseph Turner',
+                            'turnerj9',
+                            '$5$rounds=80000$Ed98ValkoHY.Zjk9$W4SLg3m9dQ.RJq1Cu2QzdlO9noMoh2AwrOXtJISGCL0'))
+        cur.execute("""insert into admins (user_id) values (?)""", (cur.lastrowid, ))
         db.commit()
 
 
@@ -97,10 +113,16 @@ def login():
                  one=True)
     if q:
         if check_pw(password, q['pw_hash']):
+            is_admin = False
+            admin_q = query_db('select id from admins where user_id=?',
+                         (q["id"],),
+                         one=True)
+            if admin_q:
+                is_admin = True
             session_token = uuid.uuid4().hex
-            g.db.execute("""insert into sessions (user_id, session_id, creation_date)
-                                          values (?, ?, ?)""",
-                         (q["id"], session_token, datetime.datetime.today()))
+            g.db.execute("""insert into sessions (user_id, session_id, creation_date, is_admin)
+                                          values (?, ?, ?, ?)""",
+                         (q["id"], session_token, datetime.datetime.today(), is_admin))
             g.db.commit()
             return json_response(data={"session_token": session_token})
     return json_response(401, "Authorization required.")
@@ -124,34 +146,36 @@ def contest(contest_id):
     return json_response(data={"contest":contest})
 
 
+@app.route('/users', methods=['POST'])
+@requires_auth
+def create_user():
+    check_admin()
+    try:
+        name = str(request.form['name'])
+        username = str(request.form['username'])
+        password = hash_pw(str(request.form['password']))
+        # Check if the username exists
+        q = query_db('select id from users where username=?',
+                     (username,),
+                     one=True)
+        if q:
+            return json_response(409, "User already exists")
+        else:
+            cur = g.db.cursor()
+            cur.execute("""insert into users (name, username, pw_hash)
+                                       values (?, ?, ?)""",
+                         (name, username, password))
+            g.db.commit()
+            user_id = cur.lastrowid
+            return json_response(data={"id": user_id})
+    except KeyError, e:
+        return json_response(400,
+                             "Required argument %s not found" % e.message)
 # List users
 @app.route('/users', methods=['GET', 'POST'])
 def users():
-    if request.method == 'POST':
-        try:
-            name = str(request.form['name'])
-            username = str(request.form['username'])
-            password = hash_pw(str(request.form['password']))
-            # Check if the username exists
-            q = query_db('select id from users where username=?',
-                         (username,),
-                         one=True)
-            if q:
-                return json_response(409, "User already exists")
-            else:
-                cur = g.db.cursor()
-                cur.execute("""insert into users (name, username, pw_hash)
-                                           values (?, ?, ?)""",
-                             (name, username, password))
-                g.db.commit()
-                user_id = cur.lastrowid
-                return json_response(data={"id": user_id})
-        except KeyError, e:
-            return json_response(400,
-                                 "Required argument %s not found" % e.message)
-    else:
-        users = query_db('select id, username from users')
-        return json_response(data={"users": users})
+    users = query_db('select id, username from users')
+    return json_response(data={"users": users})
 
 
 # List users

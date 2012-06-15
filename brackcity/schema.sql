@@ -7,12 +7,20 @@ create table users (
 );
 create index user_index on users (username);
 
+drop table if exists admins;
+create table admins (
+  id integer primary key autoincrement,
+  user_id integer not null
+);
+create index admin_user_id_index on admins (user_id);
+
 drop table if exists sessions;
 create table sessions(
   id integer primary key autoincrement,
   user_id integer not null,
   session_id TEXT not null,
-  creation_date TEXT not null
+  creation_date TEXT not null,
+  is_admin BOOLEAN not null
 );
 create index session_id_index on sessions (session_id);
 
@@ -42,3 +50,4 @@ create table scores(
   player_id integer not NULL,
   score REAL not null
 );
+

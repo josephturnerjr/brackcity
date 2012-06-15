@@ -1,3 +1,3 @@
-from brackcity.views import init_db
+from brackcity.api_views import init_db
 
 init_db()

@@ -1,8 +1,8 @@
 run: 
 	python runserver.py
 
-env: dummy
-	env/bin/activate
+db:
+	python create_db.py
 
 test:
 	python -m unittest discover tests/
