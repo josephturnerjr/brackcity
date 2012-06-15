@@ -2,8 +2,7 @@ import requests
 import unittest
 import uuid
 import json
-
-BASE = "http://127.0.0.1:5000"
+from utils import BASE, create_user
 
 
 class TestUserCreation(unittest.TestCase):
@@ -14,7 +13,7 @@ class TestUserCreation(unittest.TestCase):
         nu_data = {"name": self.name,
                    "username": self.username,
                    "password": self.password}
-        self.id = requests.post(BASE + "/users", data=nu_data).json["data"]["id"]
+        self.id = create_user(**nu_data)["id"]
         good = {"username": self.username, "password": self.password}
         r = requests.post(BASE + "/login", data=good)
         self.auth = (r.json["data"]["session_token"], "foo")
@@ -48,7 +47,7 @@ class TestUser(unittest.TestCase):
         nu_data = {"name": self.name,
                    "username": self.username,
                    "password": self.password}
-        requests.post(BASE + "/users", data=nu_data).json
+        self.id = create_user(**nu_data)["id"]
         good = {"username": self.username, "password": self.password}
         r = requests.post(BASE + "/login", data=good)
         self.auth = (r.json["data"]["session_token"], "foo")

@@ -340,6 +340,14 @@ def user_contest_games(user_id, contest_id):
         try:
             date = request.form['date']
             try:
+                parsed_date = datetime.date(*map(int, date.split("-")))
+            except TypeError:
+                return json_response(400,
+                                     "Date must be in YYYY-MM-DD format")
+            except ValueError, e:
+                return json_response(400,
+                                     "Couldn't parse a valid date from %s" % date)
+            try:
                 ranking = json.loads(request.form['ranking'])
             except ValueError:
                 return json_response(400,
@@ -361,7 +369,7 @@ def user_contest_games(user_id, contest_id):
             cur = g.db.cursor()
             cur.execute("""insert into games (date, contest_id)
                                         values (?, ?)""",
-                         (date, contest_id))
+                         (parsed_date, contest_id))
             game_id = cur.lastrowid
             for i, player in enumerate(ranking):
                 cur.execute("""insert into scores (game_id, player_id, score)
