@@ -1,70 +1,10 @@
 from brackcity import app
-from flask import (request, redirect, url_for,
-                   render_template, g, session, abort, jsonify, json, Response)
-import sqlite3
-from contextlib import closing
+from flask import (request, g, jsonify, json)
 from passlib.hash import sha256_crypt
 import uuid
 import datetime
-from functools import wraps
-
-
-def check_auth(username, password):
-    q = query_db('select user_id, is_admin from sessions where session_id=?',
-                 (username,),
-                 one=True)
-    if q:
-        g.auth_user_id = q["user_id"]
-        g.is_user_admin = q["is_admin"]
-        return True
-    else:
-        return False
-
-
-def authenticate():
-    return Response('Login required.', 401,
-                    {'WWW-Authenticate': 'Basic realm="Login Required"'})
-
-
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
-
-
-def check_session_auth(user_id):
-    if user_id != g.auth_user_id:
-        abort(403)
-
-def check_session_auth(user_id):
-    if user_id != g.auth_user_id:
-        abort(403)
-
-def check_admin():
-    if not g.is_user_admin:
-        abort(403)
-
-def connect_db():
-    return sqlite3.connect(app.config['DATABASE'])
-
-
-def init_db():
-    with closing(connect_db()) as db:
-        cur = db.cursor()
-        with app.open_resource('schema.sql') as f:
-            cur.executescript(f.read())
-        # REMOVE ME
-        cur.execute("""insert into users (name, username, pw_hash)
-                                          values (?, ?, ?)""",
-                            ('Joseph Turner',
-                            'turnerj9',
-                            '$5$rounds=80000$Ed98ValkoHY.Zjk9$W4SLg3m9dQ.RJq1Cu2QzdlO9noMoh2AwrOXtJISGCL0'))
-        cur.execute("""insert into admins (user_id) values (?)""", (cur.lastrowid, ))
-        db.commit()
+from auth import requires_auth, check_session_auth, check_admin
+from db_functions import connect_db, query_db
 
 
 @app.before_request
@@ -75,13 +15,6 @@ def before_request():
 @app.teardown_request
 def teardown_request(exception):
     g.db.close()
-
-
-def query_db(query, args=(), one=False):
-    cur = g.db.execute(query, args)
-    rv = [dict((cur.description[idx][0], value)
-               for idx, value in enumerate(row)) for row in cur.fetchall()]
-    return (rv[0] if rv else None) if one else rv
 
 
 def hash_pw(password):
@@ -133,7 +66,7 @@ def login():
 @requires_auth
 def contests():
     contests = query_db('select id, user_id, name from contests')
-    return json_response(data={"contests":contests})
+    return json_response(data={"contests": contests})
 
 
 @app.route('/contests/<contest_id>', methods=['GET'])
@@ -143,7 +76,7 @@ def contest(contest_id):
                  (contest_id,), one=True)
     if not contest:
         return json_response(404, "No such contest")
-    return json_response(data={"contest":contest})
+    return json_response(data={"contest": contest})
 
 
 @app.route('/users', methods=['POST'])
@@ -171,6 +104,8 @@ def create_user():
     except KeyError, e:
         return json_response(400,
                              "Required argument %s not found" % e.message)
+
+
 # List users
 @app.route('/users', methods=['GET', 'POST'])
 def users():
@@ -178,7 +113,7 @@ def users():
     return json_response(data={"users": users})
 
 
-# List users
+# Get user
 @app.route('/users/<int:user_id>', methods=['GET'])
 @requires_auth
 def user(user_id):
@@ -186,7 +121,7 @@ def user(user_id):
                     (user_id,), one=True)
     if not user:
         return json_response(404, "No such user")
-    return json_response(data={"user":user})
+    return json_response(data={"user": user})
 
 
 # List and create contests
@@ -215,7 +150,7 @@ def user_contests(user_id):
     else:
         contests = query_db('select id, name from contests where user_id=?',
                             (user_id,))
-        return json_response(data={"contests":contests})
+        return json_response(data={"contests": contests})
 
 
 # Get, update, and delete a contest
@@ -248,7 +183,8 @@ def user_contest(user_id, contest_id):
         g.db.commit()
         return json_response()
     else:
-        return json_response(data={"contest":contest})
+        return json_response(data={"contest": contest})
+
 
 # List and add participants
 @app.route('/users/<int:user_id>/contests/<int:contest_id>/players',
@@ -319,7 +255,7 @@ def user_contest_player(user_id, contest_id, player_id):
         g.db.commit()
         return json_response()
     else:
-        return json_response(data={"player":player})
+        return json_response(data={"player": player})
 
 
 # List and add games
