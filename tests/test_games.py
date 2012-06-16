@@ -2,7 +2,7 @@ import requests
 import unittest
 import uuid
 import json
-from utils import BASE, create_user
+from utils import BASE, create_user, get_new_user_id_auth
 
 
 class TestUserContestGames(unittest.TestCase):
@@ -20,9 +20,27 @@ class TestUserContestGames(unittest.TestCase):
         r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo"}, auth=self.auth)
         self.contest_id = r.json["data"]["id"]
 
-    def test_games(self):
+    def add_players(self, contest_id):
+        # Now create players
+        players = []
+        for i in range(10):
+            r = requests.post(BASE + "/users/%s/contests/%s/players" % (self.id, self.contest_id), data={"name": "boo"}, auth=self.auth)
+            players.append(r.json["data"]["id"])
+        return players
+
+    def test_list(self):
         data = requests.get(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), auth=self.auth).json["data"]
         assert("games" in data)
+        assert(len(data["games"]) == 0)
+        players = self.add_players(self.contest_id)
+        r = requests.post(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), 
+                          data={"date": "2012-6-12", "ranking": json.dumps(players)}, 
+                          auth=self.auth)
+        data = requests.get(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), auth=self.auth).json["data"]
+        assert("games" in data)
+        assert(len(data["games"]) == 1)
+
+    def test_create(self):
         r = requests.post(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), auth=self.auth)
         assert(r.status_code == 400)
         r = requests.post(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), data={"date": "2012-6-12"}, auth=self.auth)
@@ -48,15 +66,23 @@ class TestUserContestGames(unittest.TestCase):
                           auth=self.auth)
         assert(r.status_code == 400)
         # Now create players
-        players = []
-        for i in range(10):
-            r = requests.post(BASE + "/users/%s/contests/%s/players" % (self.id, self.contest_id), data={"name": "boo"}, auth=self.auth)
-            players.append(r.json["data"]["id"])
+        players = self.add_players(self.contest_id)
         r = requests.post(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), 
                           data={"date": "2012-6-12", "ranking": json.dumps(players)}, 
                           auth=self.auth)
         assert(r.status_code == 200)
         assert("id" in r.json["data"])
+        data = requests.get(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), auth=self.auth).json["data"]
+        assert(len(data["games"]) == 1)
+        # Test with an incorrect session
+        id, auth = get_new_user_id_auth()
+        players = self.add_players(self.contest_id)
+        r = requests.post(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), 
+                          data={"date": "2012-6-12", "ranking": json.dumps(players)}, 
+                          auth=auth)
+        assert(r.status_code == 403)
+        data = requests.get(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), auth=self.auth).json["data"]
+        assert(len(data["games"]) == 1)
 
 
 if __name__ == "__main__":
