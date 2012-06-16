@@ -243,7 +243,7 @@ def user_contest_player(user_id, contest_id, player_id):
             player_user_id = None  # int(request.form['player_id'])
             g.db.execute("""update players set name=?, user_id=?
                                             where id=?""",
-                         (name, player_user_id))
+                         (name, player_user_id, player_id))
             g.db.commit()
             return json_response()
         except KeyError, e:

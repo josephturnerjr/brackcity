@@ -88,6 +88,26 @@ class TestUserContestPlayers(unittest.TestCase):
         r = requests.get(BASE + "/users/%s/contests/%s/players" % (self.id, self.contest_id), auth=self.auth).json["data"]
         assert(len(r["players"]) == 1)
 
+    def test_modify(self):
+        r = requests.put(BASE + "/users/%s/contests/%s/players/%s" % (self.id, self.contest_id, 23948), data={"name": "bar"}, auth=self.auth)
+        assert(r.status_code == 404)
+        r = requests.post(BASE + "/users/%s/contests/%s/players" % (self.id, self.contest_id), data={"name": "foo"}, auth=self.auth)
+        pl_id = r.json["data"]["id"]
+        r = requests.get(BASE + "/users/%s/contests/%s/players/%s" % (self.id, self.contest_id, pl_id), auth=self.auth)
+        assert(r.json["data"]["player"]["name"] == "foo")
+        r = requests.put(BASE + "/users/%s/contests/%s/players/%s" % (self.id, self.contest_id, pl_id), auth=self.auth)
+        assert(r.status_code == 400)
+        r = requests.put(BASE + "/users/%s/contests/%s/players/%s" % (self.id, self.contest_id, pl_id), data={"name": "bar"}, auth=self.auth)
+        assert(r.status_code == 200)
+        r = requests.get(BASE + "/users/%s/contests/%s/players/%s" % (self.id, self.contest_id, pl_id), auth=self.auth)
+        assert(r.json["data"]["player"]["name"] == "bar")
+        # Test delete with wrong user
+        id, auth = get_new_user_id_auth()
+        r = requests.put(BASE + "/users/%s/contests/%s/players/%s" % (self.id, self.contest_id, pl_id), data={"name": "baz"}, auth=auth)
+        assert(r.status_code == 403)
+        r = requests.get(BASE + "/users/%s/contests/%s/players/%s" % (self.id, self.contest_id, pl_id), auth=self.auth)
+        assert(r.json["data"]["player"]["name"] == "bar")
+
 
 if __name__ == "__main__":
     unittest.main()
