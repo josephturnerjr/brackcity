@@ -2,7 +2,7 @@ import requests
 import unittest
 import uuid
 import json
-from utils import BASE, create_user
+from utils import BASE, create_user, get_new_user_id_auth
 
 
 
@@ -35,13 +35,8 @@ class TestUserContests(unittest.TestCase):
         assert(r.status_code == 400)
         r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo"}, auth=self.auth)
         assert(r.status_code == 200)
-        username = uuid.uuid4().hex
-        password = uuid.uuid4().hex
-        name = "Joseph Tester"
-        nu_data = {"name": name,
-                   "username": username,
-                   "password": password}
-        id = create_user(**nu_data)["id"]
+        # Test create from wrong user
+        id, auth = get_new_user_id_auth()
         r = requests.post(BASE + "/users/%s/contests" % id, data={"name": "boo"}, auth=self.auth)
         assert(r.status_code == 403)
 
@@ -66,20 +61,28 @@ class TestUserContests(unittest.TestCase):
         assert(r.status_code == 404)
         r = requests.delete(BASE + "/users/%s/contests/%s" % (self.id, 239482), auth=self.auth)
         assert(r.status_code == 404)
-        username = uuid.uuid4().hex
-        password = uuid.uuid4().hex
-        name = "Joseph Tester"
-        nu_data = {"name": name,
-                   "username": username,
-                   "password": password}
-        id = create_user(**nu_data)["id"]
-        good = {"username": username, "password": password}
-        r = requests.post(BASE + "/login", data=good)
-        auth = (r.json["data"]["session_token"], "foo")
+        # Test delete from wrong user
+        id, auth = get_new_user_id_auth()
         r = requests.post(BASE + "/users/%s/contests" % id, data={"name": "boo"}, auth=auth)
         assert(r.status_code == 200)
         r = requests.post(BASE + "/users/%s/contests" % id, data={"name": "boo"}, auth=self.auth)
         assert(r.status_code == 403)
+
+    def test_mod(self):
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo"}, auth=self.auth).json
+        contest_id = r["data"]["id"]
+        r = requests.get(BASE + "/users/%s/contests/%s" % (self.id, contest_id), auth=self.auth).json["data"]
+        assert(r["contest"]["name"] == "boo")
+        r = requests.put(BASE + "/users/%s/contests/%s" % (self.id, contest_id), data={"name": "bar"}, auth=self.auth)
+        r = requests.get(BASE + "/users/%s/contests/%s" % (self.id, contest_id), auth=self.auth).json["data"]
+        assert(r["contest"]["name"] == "bar")
+        # Test put from wrong user
+        id, auth = get_new_user_id_auth()
+        r = requests.put(BASE + "/users/%s/contests/%s" % (self.id, contest_id), data={"name": "baz"}, auth=auth)
+        assert(r.status_code == 403)
+        r = requests.get(BASE + "/users/%s/contests/%s" % (self.id, contest_id), auth=self.auth).json["data"]
+        # no change
+        assert(r["contest"]["name"] == "bar")
 
 
 if __name__ == "__main__":
