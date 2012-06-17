@@ -337,6 +337,7 @@ def user_contest_game(user_id, contest_id, game_id):
     if not game:
         return json_response(404, 'No such game')
     if request.method == 'PUT':
+        abort(400)
         check_session_auth(user_id)
         try:
             name = str(request.form['name'])
@@ -357,6 +358,7 @@ def user_contest_game(user_id, contest_id, game_id):
         if request.method == 'DELETE':
             check_session_auth(user_id)
             g.db.execute("""delete from games where id=?""", (game_id,))
+            g.db.execute("""delete from scores where game_id=?""", (game_id,))
             g.db.commit()
             return json_response()
         else:
