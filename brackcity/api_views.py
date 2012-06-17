@@ -310,7 +310,7 @@ def user_contest_games(user_id, contest_id):
             for i, player in enumerate(ranking):
                 cur.execute("""insert into scores (game_id, player_id, score)
                                             values (?, ?, ?)""",
-                             (game_id, player, 1.0 / len(ranking)))
+                             (game_id, player, float(len(ranking) - i) / len(ranking)))
             g.db.commit()
             return json_response(data={"id": game_id})
         except KeyError, e:
@@ -320,6 +320,50 @@ def user_contest_games(user_id, contest_id):
         games = query_db("""select id, date from games
                                where contest_id=?""", (contest_id,))
         return json_response(data={"games": games})
+
+# Get, modify, delete a game
+@app.route('/users/<int:user_id>/contests/<int:contest_id>/games/<int:game_id>',
+           methods=['GET', 'PUT', 'DELETE'])
+@requires_auth
+def user_contest_game(user_id, contest_id, game_id):
+    game = query_db("""select games.date, games.contest_id
+                          from games, users, contests
+                          where (users.id=contests.user_id and
+                                 games.contest_id=contests.id and
+                                 users.id=? and
+                                 contests.id=? and
+                                 games.id=?)""",
+                    (user_id, contest_id, game_id), one=True)
+    if not game:
+        return json_response(404, 'No such game')
+    if request.method == 'PUT':
+        check_session_auth(user_id)
+        try:
+            name = str(request.form['name'])
+            g.db.execute("""update players set name=?, user_id=?
+                                            where id=?""",
+                         (name, player_user_id, player_id))
+            g.db.commit()
+            return json_response()
+        except KeyError, e:
+            return json_response(400,
+                                 "Required argument %s not found" % e.message)
+    else:
+        scores = query_db("""select player_id, score
+                                from scores
+                                where game_id=?""",
+                          (game_id,))
+        ranking = map(lambda x: int(x["player_id"]), sorted(scores, key=lambda x: x["score"], reverse=True))
+        if request.method == 'DELETE':
+            check_session_auth(user_id)
+            g.db.execute("""delete from games where id=?""", (game_id,))
+            g.db.commit()
+            return json_response()
+        else:
+            game["ranking"] = ranking
+            return json_response(data={"game": game})
+
+
 
 '''
 # Get the current scoreboard

@@ -84,6 +84,49 @@ class TestUserContestGames(unittest.TestCase):
         data = requests.get(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), auth=self.auth).json["data"]
         assert(len(data["games"]) == 1)
 
+    def test_get(self):
+        r = requests.get(BASE + "/users/%s/contests/%s/games/%s" % (self.id, self.contest_id, 23423), auth=self.auth)
+        assert(r.status_code == 404)
+        players = self.add_players(self.contest_id)
+        r = requests.post(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), 
+                          data={"date": "2012-6-12", "ranking": json.dumps(players)}, 
+                          auth=self.auth)
+        game_id = r.json["data"]["id"]
+        r = requests.get(BASE + "/users/%s/contests/%s/games/%s" % (self.id, self.contest_id, game_id), auth=self.auth)
+        assert(r.status_code == 200)
+        assert("game" in r.json["data"])
+        assert("contest_id" in r.json["data"]["game"])
+        assert("ranking" in r.json["data"]["game"])
+        assert("date" in r.json["data"]["game"])
+
+    def test_delete(self):
+        players = self.add_players(self.contest_id)
+        r = requests.post(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), 
+                          data={"date": "2012-6-12", "ranking": json.dumps(players)}, 
+                          auth=self.auth)
+        game_id = r.json["data"]["id"]
+        r = requests.get(BASE + "/users/%s/contests/%s/games/%s" % (self.id, self.contest_id, game_id), auth=self.auth)
+        assert(r.status_code == 200)
+        data = requests.get(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), auth=self.auth).json["data"]
+        assert(len(data["games"]) == 1)
+        r = requests.delete(BASE + "/users/%s/contests/%s/games/%s" % (self.id, self.contest_id, game_id), auth=self.auth)
+        r = requests.get(BASE + "/users/%s/contests/%s/games/%s" % (self.id, self.contest_id, game_id), auth=self.auth)
+        assert(r.status_code == 404)
+        data = requests.get(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), auth=self.auth).json["data"]
+        assert(len(data["games"]) == 0)
+        id, auth = get_new_user_id_auth()
+        players = self.add_players(self.contest_id)
+        r = requests.post(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), 
+                          data={"date": "2012-6-12", "ranking": json.dumps(players)}, 
+                          auth=self.auth)
+        game_id = r.json["data"]["id"]
+        r = requests.delete(BASE + "/users/%s/contests/%s/games/%s" % (self.id, self.contest_id, game_id), auth=auth)
+        assert(r.status_code == 403)
+        r = requests.get(BASE + "/users/%s/contests/%s/games/%s" % (self.id, self.contest_id, game_id), auth=self.auth)
+        assert(r.status_code == 200)
+        data = requests.get(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), auth=self.auth).json["data"]
+        assert(len(data["games"]) == 1)
+
 
 if __name__ == "__main__":
     unittest.main()
