@@ -1,10 +1,11 @@
 from brackcity import app
 from flask import (request, g, jsonify, json)
-from passlib.hash import sha256_crypt
 import uuid
 import datetime
-from auth import requires_auth, check_session_auth, check_admin
+from auth import (requires_auth, check_session_auth, check_admin,
+                  hash_pw, check_pw)
 from db_functions import connect_db, query_db
+from contests import create_contest
 
 
 @app.before_request
@@ -15,14 +16,6 @@ def before_request():
 @app.teardown_request
 def teardown_request(exception):
     g.db.close()
-
-
-def hash_pw(password):
-    return sha256_crypt.encrypt(password)
-
-
-def check_pw(password, h):
-    return sha256_crypt.verify(password, h)
 
 
 def json_response(status=200, message="OK.", data=None):
@@ -50,12 +43,13 @@ def login():
             admin_q = query_db('select id from admins where user_id=?',
                          (q["id"],),
                          one=True)
-            if admin_q:
-                is_admin = True
+            is_admin = bool(admin_q)
             session_token = uuid.uuid4().hex
-            g.db.execute("""insert into sessions (user_id, session_id, creation_date, is_admin)
+            g.db.execute("""insert into sessions (user_id, session_id,
+                                                  creation_date, is_admin)
                                           values (?, ?, ?, ?)""",
-                         (q["id"], session_token, datetime.datetime.today(), is_admin))
+                         (q["id"], session_token,
+                          datetime.datetime.today(), is_admin))
             g.db.commit()
             return json_response(data={"session_token": session_token})
     return json_response(401, "Authorization required.")
@@ -136,14 +130,15 @@ def user_contests(user_id):
         check_session_auth(user_id)
         try:
             name = str(request.form['name'])
-            # Ultimately can pull the user_id from the session
-            cur = g.db.cursor()
-            cur.execute("""insert into contests (user_id, name)
-                                          values (?, ?)""",
-                         (user_id, name))
-            g.db.commit()
-            contest_id = cur.lastrowid
-            return json_response(data={"id": contest_id})
+            c_type = str(request.form['type'])
+            contest = create_contest(user_id, name, c_type)
+#            cur = g.db.cursor()
+#            cur.execute("""insert into contests (user_id, name, type)
+#                                          values (?, ?, ?)""",
+#                         (user_id, name, c_type))
+#            g.db.commit()
+#            contest_id = cur.lastrowid
+            return json_response(data={"id": contest.db_id})
         except KeyError, e:
             return json_response(400,
                                  "Required argument %s not found" % e.message)
@@ -153,12 +148,14 @@ def user_contests(user_id):
         return json_response(data={"contests": contests})
 
 
+
 # Get, update, and delete a contest
 @app.route('/users/<int:user_id>/contests/<int:contest_id>',
            methods=['GET', 'PUT', 'DELETE'])
 @requires_auth
 def user_contest(user_id, contest_id):
-    contest = query_db("""select contests.name, contests.id, contests.user_id from users, contests
+    contest = query_db("""select contests.name, contests.id, contests.user_id
+                                 from users, contests
                                           where (users.id=contests.user_id and
                                                  users.id=? and
                                                  contests.id=?)""",
@@ -321,9 +318,10 @@ def user_contest_games(user_id, contest_id):
                                where contest_id=?""", (contest_id,))
         return json_response(data={"games": games})
 
-# Get, modify, delete a game
+
+# Get, delete a game
 @app.route('/users/<int:user_id>/contests/<int:contest_id>/games/<int:game_id>',
-           methods=['GET', 'PUT', 'DELETE'])
+           methods=['GET', 'DELETE'])
 @requires_auth
 def user_contest_game(user_id, contest_id, game_id):
     game = query_db("""select games.date, games.contest_id
@@ -336,35 +334,21 @@ def user_contest_game(user_id, contest_id, game_id):
                     (user_id, contest_id, game_id), one=True)
     if not game:
         return json_response(404, 'No such game')
-    if request.method == 'PUT':
-        abort(400)
+    if request.method == 'DELETE':
         check_session_auth(user_id)
-        try:
-            name = str(request.form['name'])
-            g.db.execute("""update players set name=?, user_id=?
-                                            where id=?""",
-                         (name, player_user_id, player_id))
-            g.db.commit()
-            return json_response()
-        except KeyError, e:
-            return json_response(400,
-                                 "Required argument %s not found" % e.message)
+        g.db.execute("""delete from games where id=?""", (game_id,))
+        g.db.execute("""delete from scores where game_id=?""", (game_id,))
+        g.db.commit()
+        return json_response()
     else:
         scores = query_db("""select player_id, score
                                 from scores
                                 where game_id=?""",
                           (game_id,))
-        ranking = map(lambda x: int(x["player_id"]), sorted(scores, key=lambda x: x["score"], reverse=True))
-        if request.method == 'DELETE':
-            check_session_auth(user_id)
-            g.db.execute("""delete from games where id=?""", (game_id,))
-            g.db.execute("""delete from scores where game_id=?""", (game_id,))
-            g.db.commit()
-            return json_response()
-        else:
-            game["ranking"] = ranking
-            return json_response(data={"game": game})
-
+        ordered = sorted(scores, key=lambda x: x["score"], reverse=True)
+        ranking = map(lambda x: int(x["player_id"]), ordered)
+        game["ranking"] = ranking
+        return json_response(data={"game": game})
 
 
 '''

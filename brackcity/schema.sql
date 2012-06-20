@@ -28,7 +28,8 @@ drop table if exists contests;
 create table contests (
   id integer primary key autoincrement,
   user_id integer not null,
-  name TEXT not null
+  name TEXT not null,
+  type TEXT not null
 );
 drop table if exists players;
 create table players(

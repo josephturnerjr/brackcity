@@ -17,7 +17,7 @@ class TestUserContestGames(unittest.TestCase):
         good = {"username": self.username, "password": self.password}
         r = requests.post(BASE + "/login", data=good)
         self.auth = (r.json["data"]["session_token"], "foo")
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo"}, auth=self.auth)
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo", "type":"manyranked"}, auth=self.auth)
         self.contest_id = r.json["data"]["id"]
 
     def add_players(self, contest_id):
