@@ -5,7 +5,8 @@ import datetime
 from auth import (requires_auth, check_session_auth, check_admin,
                   hash_pw, check_pw)
 from db_functions import connect_db, query_db
-from contests import create_contest
+from contests import create_contest, load_contest, ContestError, GameValidationError
+import jsonvalidator
 
 
 @app.before_request
@@ -27,13 +28,44 @@ def json_response(status=200, message="OK.", data=None):
     return resp
 
 
+class NoDataError(Exception):
+    pass
+
+
+class SchemaError(Exception):
+    pass
+
+
+class BadDataError(Exception):
+    pass
+
+
+def get_request_data(schema):
+    # Schema should be a JSON string with valid syntax
+    data = request.form.get("data")
+    if not data:
+        raise NoDataError("Required argument 'data' not found")
+    validator = jsonvalidator.JSONValidator(schema)
+    try:
+        data = json.loads(data)
+        if validator.validate(data):
+            return data
+        else:
+            raise SchemaError("'data' argument must follow this schema: %s" % schema)
+    except ValueError:
+        # Error loading json
+        raise BadDataError("'data' argument must be valid JSON")
+
+
 @app.route('/login', methods=['POST'])
 def login():
+    valid = '{"username": "your_username", "password": "your_password"}'
     try:
-        username = str(request.form['username'])
-        password = str(request.form['password'])
-    except KeyError, e:
-        return json_response(400, "Required argument %s not found" % e.message)
+        data = get_request_data(valid)
+    except (NoDataError, BadDataError, SchemaError), e:
+        return json_response(400, e.message)
+    username = data['username']
+    password = data['password']
     q = query_db('select id, name, pw_hash from users where username=?',
                  (username,),
                  one=True)
@@ -131,14 +163,11 @@ def user_contests(user_id):
         try:
             name = str(request.form['name'])
             c_type = str(request.form['type'])
-            contest = create_contest(user_id, name, c_type)
-#            cur = g.db.cursor()
-#            cur.execute("""insert into contests (user_id, name, type)
-#                                          values (?, ?, ?)""",
-#                         (user_id, name, c_type))
-#            g.db.commit()
-#            contest_id = cur.lastrowid
-            return json_response(data={"id": contest.db_id})
+            try:
+                contest = create_contest(user_id, name, c_type)
+            except ContestError, e:
+                return json_response(400, e.message)
+            return json_response(data={"id": contest.contest_id})
         except KeyError, e:
             return json_response(400,
                                  "Required argument %s not found" % e.message)
@@ -218,7 +247,7 @@ def user_contest_players(user_id, contest_id):
         return json_response(data={"players": players})
 
 
-# Get, update, and delete a contest
+# Get, update, and delete a player
 @app.route('/users/<int:user_id>/contests/<int:contest_id>/players/<int:player_id>',
            methods=['GET', 'PUT', 'DELETE'])
 @requires_auth
@@ -260,59 +289,23 @@ def user_contest_player(user_id, contest_id, player_id):
            methods=['POST', 'GET'])
 @requires_auth
 def user_contest_games(user_id, contest_id):
-    contest = query_db("""select contests.name, contests.id, contests.user_id
+    contest = query_db("""select contests.name, contests.id,
+                                 contests.user_id, contests.type
                                           from users, contests
                                           where (users.id=contests.user_id and
                                                  users.id=? and
                                                  contests.id=?)""",
                        (user_id, contest_id), one=True)
+    contest = load_contest(user_id, contest_id)
     if not contest:
         return json_response(404, 'No such contest')
     if request.method == 'POST':
         check_session_auth(user_id)
         try:
-            date = request.form['date']
-            try:
-                parsed_date = datetime.date(*map(int, date.split("-")))
-            except TypeError:
-                return json_response(400,
-                                     "Date must be in YYYY-MM-DD format")
-            except ValueError, e:
-                return json_response(400,
-                                     "Couldn't parse a valid date from %s" % date)
-            try:
-                ranking = json.loads(request.form['ranking'])
-            except ValueError:
-                return json_response(400,
-                                     "Rankings must be a list of player ids in decreasing order of score")
-            if not isinstance(ranking, list):
-                return json_response(400,
-                                     "Rankings must be a list of player ids in decreasing order of score")
-            if len(ranking) < 2:
-                return json_response(400,
-                                     "Games must have two or more players")
-            players = query_db("""select id
-                                   from players
-                                   where id in (%s) and
-                                   contest_id = ?""" % (",".join('?' * len(ranking)),),
-                               ranking + [contest_id])
-            if len(players) != len(ranking):
-                return json_response(400,
-                                     'Rankings must be for contest players')
-            cur = g.db.cursor()
-            cur.execute("""insert into games (date, contest_id)
-                                        values (?, ?)""",
-                         (parsed_date, contest_id))
-            game_id = cur.lastrowid
-            for i, player in enumerate(ranking):
-                cur.execute("""insert into scores (game_id, player_id, score)
-                                            values (?, ?, ?)""",
-                             (game_id, player, float(len(ranking) - i) / len(ranking)))
-            g.db.commit()
+            game_id = contest.create_game(**request.form)
             return json_response(data={"id": game_id})
-        except KeyError, e:
-            return json_response(400,
-                                 "Required argument %s not found" % e.message)
+        except GameValidationError, e:
+            return json_response(400, e.message)
     else:
         games = query_db("""select id, date from games
                                where contest_id=?""", (contest_id,))

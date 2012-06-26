@@ -1,10 +1,11 @@
 import requests
 import uuid
+import json
 
 BASE = "http://127.0.0.1:5000"
 
 def get_admin_auth():
-    r = requests.post(BASE + "/login", data={"username": 'turnerj9', "password": 'Pass1234'})
+    r = requests.post(BASE + "/login", data={"data": '{"username": "turnerj9", "password": "Pass1234"}'})
     return (r.json["data"]["session_token"], 'foo')
 
 def create_user(name, username, password):
@@ -20,7 +21,7 @@ def get_new_user_id_auth():
                "username": username,
                "password": password}
     id = create_user(**nu_data)["id"]
-    good = {"username": username, "password": password}
+    good = {"data": json.dumps({"username": username, "password": password})}
     r = requests.post(BASE + "/login", data=good)
     auth = (r.json["data"]["session_token"], "foo")
     return (id, auth)

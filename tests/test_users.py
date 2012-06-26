@@ -14,7 +14,7 @@ class TestUserCreation(unittest.TestCase):
                    "username": self.username,
                    "password": self.password}
         self.id = create_user(**nu_data)["id"]
-        good = {"username": self.username, "password": self.password}
+        good = {"data": json.dumps({"username": self.username, "password": self.password})}
         r = requests.post(BASE + "/login", data=good)
         self.auth = (r.json["data"]["session_token"], "foo")
 
@@ -24,20 +24,19 @@ class TestUserCreation(unittest.TestCase):
         assert(self.name == requests.get(BASE + "/users/%s" % self.id, auth=self.auth).json["data"]["user"]["name"])
 
     def test_login(self):
-        good = {"username": self.username, "password": self.password}
+        good = {"data": json.dumps({"username": self.username, "password": self.password})}
         r = requests.post(BASE + "/login", data=good)
         assert(r.status_code == 200)
         assert(r.json["data"])
-        wrong = {"username": self.username, "password": "self.password"}
+        wrong= {"data": json.dumps({"username": self.username, "password": "self.password"})}
         r = requests.post(BASE + "/login", data=wrong)
         assert(r.status_code == 401)
-        wrong = {"username": self.username, "password": self.password[:10]}
+        wrong = {"data": json.dumps({"username": self.username, "password": self.password[:10]})}
         r = requests.post(BASE + "/login", data=wrong)
         assert(r.status_code == 401)
-        wrong = {"username": self.username}
+        wrong = {"data": json.dumps({"username": self.username})}
         r = requests.post(BASE + "/login", data=wrong)
         assert(r.status_code == 400)
-
 
 class TestUser(unittest.TestCase):
     def setUp(self):
@@ -48,7 +47,7 @@ class TestUser(unittest.TestCase):
                    "username": self.username,
                    "password": self.password}
         self.id = create_user(**nu_data)["id"]
-        good = {"username": self.username, "password": self.password}
+        good = {"data": json.dumps({"username": self.username, "password": self.password})}
         r = requests.post(BASE + "/login", data=good)
         self.auth = (r.json["data"]["session_token"], "foo")
 
