@@ -10,7 +10,7 @@ def get_admin_auth():
 
 def create_user(name, username, password):
     auth = get_admin_auth()
-    r = requests.post(BASE + "/users", data={"name": name, "username": username, "password": password}, auth=auth)
+    r = requests.post(BASE + "/users", data={"data": json.dumps({"name": name, "username": username, "password": password})}, auth=auth)
     return r.json["data"]
 
 def get_new_user_id_auth():

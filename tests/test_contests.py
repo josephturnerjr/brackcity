@@ -23,7 +23,7 @@ class TestUserContests(unittest.TestCase):
         r = requests.get(BASE + "/users/%s/contests" % self.id, auth=self.auth).json
         assert("contests" in r["data"])
         assert(len(r["data"]["contests"]) == 0)
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo", "type": "manyranked"}, auth=self.auth)
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"data": json.dumps({"name": "boo", "type": "manyranked"})}, auth=self.auth)
         r = requests.get(BASE + "/users/%s/contests" % self.id, auth=self.auth).json
         assert("contests" in r["data"])
         assert(len(r["data"]["contests"]) == 1)
@@ -33,21 +33,21 @@ class TestUserContests(unittest.TestCase):
         assert(r.status_code == 401)
         r = requests.post(BASE + "/users/%s/contests" % self.id, auth=self.auth)
         assert(r.status_code == 400)
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo"}, auth=self.auth)
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"data": json.dumps({"name": "boo"})}, auth=self.auth)
         assert(r.status_code == 400)
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"type": "manyranked"}, auth=self.auth)
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"data": json.dumps({"type": "manyranked"})}, auth=self.auth)
         assert(r.status_code == 400)
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo", "type": "notreal"}, auth=self.auth)
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"data": json.dumps({"name": "boo", "type": "notreal"})}, auth=self.auth)
         assert(r.status_code == 400)
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo", "type": "manyranked"}, auth=self.auth)
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"data": json.dumps({"name": "boo", "type": "manyranked"})}, auth=self.auth)
         assert(r.status_code == 200)
         # Test create from wrong user
         id, auth = get_new_user_id_auth()
-        r = requests.post(BASE + "/users/%s/contests" % id, data={"name": "boo", "type": "manyranked"}, auth=self.auth)
+        r = requests.post(BASE + "/users/%s/contests" % id, data={"data": json.dumps({"name": "boo", "type": "manyranked"})}, auth=self.auth)
         assert(r.status_code == 403)
 
     def test_details(self):
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo", "type": "manyranked"}, auth=self.auth).json
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"data": json.dumps({"name": "boo", "type": "manyranked"})}, auth=self.auth).json
         contest_id = r["data"]["id"]
         r = requests.get(BASE + "/users/%s/contests/%s" % (self.id, contest_id), auth=self.auth).json["data"]
         assert("user_id" in r["contest"])
@@ -57,7 +57,7 @@ class TestUserContests(unittest.TestCase):
         assert(r.status_code == 404)
 
     def test_delete(self):
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo", "type": "manyranked"}, auth=self.auth).json
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"data": json.dumps({"name": "boo", "type": "manyranked"})}, auth=self.auth).json
         contest_id = r["data"]["id"]
         r = requests.get(BASE + "/users/%s/contests/%s" % (self.id, contest_id), auth=self.auth)
         assert(r.status_code == 200)
@@ -69,13 +69,13 @@ class TestUserContests(unittest.TestCase):
         assert(r.status_code == 404)
         # Test delete from wrong user
         id, auth = get_new_user_id_auth()
-        r = requests.post(BASE + "/users/%s/contests" % id, data={"name": "boo", "type": "manyranked"}, auth=auth)
+        r = requests.post(BASE + "/users/%s/contests" % id, data={"data": json.dumps({"name": "boo", "type": "manyranked"})}, auth=auth)
         assert(r.status_code == 200)
-        r = requests.post(BASE + "/users/%s/contests" % id, data={"name": "boo", "type": "manyranked"}, auth=self.auth)
+        r = requests.post(BASE + "/users/%s/contests" % id, data={"data": json.dumps({"name": "boo", "type": "manyranked"})}, auth=self.auth)
         assert(r.status_code == 403)
 
     def test_mod(self):
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo", "type": "manyranked"}, auth=self.auth).json
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"data": json.dumps({"name": "boo", "type": "manyranked"})}, auth=self.auth).json
         contest_id = r["data"]["id"]
         r = requests.get(BASE + "/users/%s/contests/%s" % (self.id, contest_id), auth=self.auth).json["data"]
         assert(r["contest"]["name"] == "boo")

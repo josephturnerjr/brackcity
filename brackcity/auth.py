@@ -46,4 +46,5 @@ def hash_pw(password):
 
 
 def check_pw(password, h):
+    print password, h
     return sha256_crypt.verify(password, h)

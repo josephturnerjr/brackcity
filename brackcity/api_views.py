@@ -108,28 +108,29 @@ def contest(contest_id):
 @app.route('/users', methods=['POST'])
 @requires_auth
 def create_user():
+    valid = '{"name": "name", "username": "username", "password": "password"}'
     check_admin()
     try:
-        name = str(request.form['name'])
-        username = str(request.form['username'])
-        password = hash_pw(str(request.form['password']))
-        # Check if the username exists
-        q = query_db('select id from users where username=?',
-                     (username,),
-                     one=True)
-        if q:
-            return json_response(409, "User already exists")
-        else:
-            cur = g.db.cursor()
-            cur.execute("""insert into users (name, username, pw_hash)
-                                       values (?, ?, ?)""",
-                         (name, username, password))
-            g.db.commit()
-            user_id = cur.lastrowid
-            return json_response(data={"id": user_id})
-    except KeyError, e:
-        return json_response(400,
-                             "Required argument %s not found" % e.message)
+        data = get_request_data(valid)
+    except (NoDataError, BadDataError, SchemaError), e:
+        return json_response(400, e.message)
+    name = data['name']
+    username = data['username']
+    password = hash_pw(data['password'])
+    # Check if the username exists
+    q = query_db('select id from users where username=?',
+                 (username,),
+                 one=True)
+    if q:
+        return json_response(409, "User already exists")
+    else:
+        cur = g.db.cursor()
+        cur.execute("""insert into users (name, username, pw_hash)
+                                   values (?, ?, ?)""",
+                     (name, username, password))
+        g.db.commit()
+        user_id = cur.lastrowid
+        return json_response(data={"id": user_id})
 
 
 # List users
@@ -154,6 +155,7 @@ def user(user_id):
 @app.route('/users/<int:user_id>/contests', methods=['GET', 'POST'])
 @requires_auth
 def user_contests(user_id):
+    valid = '{"name": "contest name (string)", "type": "contest type (string)"}'
     user = query_db('select id from users where id=?',
                     (user_id,), one=True)
     if not user:
@@ -161,16 +163,16 @@ def user_contests(user_id):
     if request.method == 'POST':
         check_session_auth(user_id)
         try:
-            name = str(request.form['name'])
-            c_type = str(request.form['type'])
-            try:
-                contest = create_contest(user_id, name, c_type)
-            except ContestError, e:
-                return json_response(400, e.message)
-            return json_response(data={"id": contest.contest_id})
-        except KeyError, e:
-            return json_response(400,
-                                 "Required argument %s not found" % e.message)
+            data = get_request_data(valid)
+        except (NoDataError, BadDataError, SchemaError), e:
+            return json_response(400, e.message)
+        name = data['name']
+        c_type = data['type']
+        try:
+            contest = create_contest(user_id, name, c_type)
+        except ContestError, e:
+            return json_response(400, e.message)
+        return json_response(data={"id": contest.contest_id})
     else:
         contests = query_db('select id, name from contests where user_id=?',
                             (user_id,))
