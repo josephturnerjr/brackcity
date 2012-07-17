@@ -18,7 +18,7 @@ class TestUserContestPlayers(unittest.TestCase):
         good = {"data": json.dumps({"username": self.username, "password": self.password})}
         r = requests.post(BASE + "/login", data=good)
         self.auth = (r.json["data"]["session_token"], "foo")
-        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"name": "boo", "type": "manyranked"}, auth=self.auth).json
+        r = requests.post(BASE + "/users/%s/contests" % self.id, data={"data": json.dumps({"name": "boo", "type": "manyranked"})}, auth=self.auth).json
         self.contest_id = r["data"]["id"]
 
     def test_list(self):

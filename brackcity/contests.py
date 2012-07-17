@@ -12,15 +12,21 @@ class ContestError(Exception):
 
 
 class Contest(object):
+    _SCHEMA = {"date": "2012-7-16"}
+
     def __init__(self, user_id, name, contest_type, contest_id):
         self.name = name
         self.user_id = user_id
         self.contest_type = contest_type
         self.contest_id = contest_id
 
+    def get_game_schema(self):
+        raise NotImplementedError()
+
     def create_game(self, cur, **kwargs):
         try:
-            date = kwargs["date"][0]
+            date = kwargs["date"]
+            print date
             parsed_date = datetime.date(*map(int, date.split("-")))
         except TypeError:
             raise GameValidationError("Date must be in YYYY-MM-DD format")
@@ -36,6 +42,13 @@ class Contest(object):
 
 
 class PingPong(Contest):
+    _SCHEMA = dict(Contest._SCHEMA)
+    _SCHEMA.update({"players": ["player1", "player2"], "games_played": 3, "game_scores": [[11, 9], [19, 21], [11, 2]]})
+    GAME_SCHEMA = json.dumps(_SCHEMA)
+
+    def get_game_schema(self):
+        return self.GAME_SCHEMA
+
     def create_game(self, **kwargs):
         cur = g.db.cursor()
         game_id = Contest.create_game(self, cur, **kwargs)
@@ -68,11 +81,19 @@ class PingPong(Contest):
 
 
 class ManyPlayersRanked(Contest):
+    _SCHEMA = dict(Contest._SCHEMA)
+    _SCHEMA.update({"ranking": [1]})
+    GAME_SCHEMA = json.dumps(_SCHEMA)
+
+    def get_game_schema(self):
+        print ManyPlayersRanked.GAME_SCHEMA
+        return ManyPlayersRanked.GAME_SCHEMA
+
     def create_game(self, **kwargs):
         cur = g.db.cursor()
         game_id = Contest.create_game(self, cur, **kwargs)
         try:
-            ranking = json.loads(kwargs["ranking"][0])
+            ranking = kwargs["ranking"]
         except ValueError:
             raise GameValidationError("Rankings must be a list of player ids in decreasing order of score")
         except KeyError, e:

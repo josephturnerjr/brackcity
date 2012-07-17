@@ -304,9 +304,11 @@ def user_contest_games(user_id, contest_id):
     if request.method == 'POST':
         check_session_auth(user_id)
         try:
-            game_id = contest.create_game(**request.form)
+            print contest.get_game_schema()
+            data = get_request_data(contest.get_game_schema())
+            game_id = contest.create_game(**data)
             return json_response(data={"id": game_id})
-        except GameValidationError, e:
+        except (NoDataError, BadDataError, SchemaError, GameValidationError), e:
             return json_response(400, e.message)
     else:
         games = query_db("""select id, date from games
