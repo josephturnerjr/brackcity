@@ -104,6 +104,7 @@ class TestUserContestGames(unittest.TestCase):
         r = requests.post(BASE + "/users/%s/contests/%s/games" % (self.id, self.contest_id), 
                           data={"data": json.dumps({"date": "2012-6-12", "ranking": players})}, 
                           auth=self.auth)
+        print r.text
         game_id = r.json["data"]["id"]
         r = requests.get(BASE + "/users/%s/contests/%s/games/%s" % (self.id, self.contest_id, game_id), auth=self.auth)
         assert(r.status_code == 200)

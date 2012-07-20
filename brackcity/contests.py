@@ -23,10 +23,9 @@ class Contest(object):
     def get_game_schema(self):
         raise NotImplementedError()
 
-    def create_game(self, cur, **kwargs):
+    def create_game(self, cur, scores, **kwargs):
         try:
             date = kwargs["date"]
-            print date
             parsed_date = datetime.date(*map(int, date.split("-")))
         except TypeError:
             raise GameValidationError("Date must be in YYYY-MM-DD format")
@@ -34,16 +33,16 @@ class Contest(object):
             raise GameValidationError("Couldn't parse a valid date from %s" % date)
         except KeyError, e:
             raise GameValidationError("Required argument %s not found" % e.message)
-        cur.execute("""insert into games (date, contest_id)
-                                    values (?, ?)""",
-                     (parsed_date, self.contest_id))
-        # No commit
+        cur.execute("""insert into games (date, contest_id, json_scores)
+                                    values (?, ?, ?)""",
+                     (parsed_date, self.contest_id, scores))
+        g.db.commit()
         return cur.lastrowid
 
 
 class PingPong(Contest):
     _SCHEMA = dict(Contest._SCHEMA)
-    _SCHEMA.update({"players": ["player1", "player2"], "games_played": 3, "game_scores": [[11, 9], [19, 21], [11, 2]]})
+    _SCHEMA.update({"players": [1, 2], "games_played": 3, "game_scores": [[11, 9], [19, 21], [11, 2]]})
     GAME_SCHEMA = json.dumps(_SCHEMA)
 
     def get_game_schema(self):
@@ -51,32 +50,25 @@ class PingPong(Contest):
 
     def create_game(self, **kwargs):
         cur = g.db.cursor()
-        game_id = Contest.create_game(self, cur, **kwargs)
         try:
-            game = json.loads(kwargs["game"][0])
+            players = kwargs["players"]
+            scores = kwargs["game_scores"]
         except ValueError:
             raise GameValidationError("Game must be a valid JSON object")
         except KeyError, e:
             raise GameValidationError("Required argument %s not found" % e.message)
-        try:
-            # TODO game schema test
-            pass
-        except KeyError, e:
-            raise GameValidationError("Game schema is invalid")
-        if len(ranking) < 2:
-            raise GameValidationError("Games for this contest type must have two or more players")
-        players = query_db("""select id
+        if len(players) != 2:
+            raise GameValidationError("This context is for singles ping pong, there must be 2 players")
+        if not reduce(lambda x, y: x and y, map(lambda x: len(x) == 2, scores)):
+            raise GameValidationError("Game scores must be lists of length 2")
+        cplayers = query_db("""select id
                                from players
-                               where id in (%s) and
-                               contest_id = ?""" % (",".join('?' * len(ranking)),),
-                           ranking + [self.contest_id])
-        if len(players) != len(ranking):
+                               where id in (?,?) and
+                               contest_id = ?""",  (players[0], players[1], self.contest_id))
+        if len(cplayers) != 2:
             raise GameValidationError('Rankings must be for contest players')
-        for i, player in enumerate(ranking):
-            cur.execute("""insert into scores (game_id, player_id, score)
-                                        values (?, ?, ?)""",
-                         (game_id, player, float(len(ranking) - i) / len(ranking)))
-        g.db.commit()
+        scores_json = json.dumps({"players": players, "scores": scores})
+        game_id = Contest.create_game(self, cur, scores_json, **kwargs)
         return game_id
 
 
@@ -91,7 +83,6 @@ class ManyPlayersRanked(Contest):
 
     def create_game(self, **kwargs):
         cur = g.db.cursor()
-        game_id = Contest.create_game(self, cur, **kwargs)
         try:
             ranking = kwargs["ranking"]
         except ValueError:
@@ -109,11 +100,8 @@ class ManyPlayersRanked(Contest):
                            ranking + [self.contest_id])
         if len(players) != len(ranking):
             raise GameValidationError('Rankings must be for contest players')
-        for i, player in enumerate(ranking):
-            cur.execute("""insert into scores (game_id, player_id, score)
-                                        values (?, ?, ?)""",
-                         (game_id, player, float(len(ranking) - i) / len(ranking)))
-        g.db.commit()
+        scores_json = json.dumps({"ranking": ranking})
+        game_id = Contest.create_game(self, cur, scores_json, **kwargs)
         return game_id
 
 

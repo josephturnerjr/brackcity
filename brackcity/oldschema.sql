@@ -45,3 +45,11 @@ create table games(
   contest_id integer,
   json_scores TEXT not null
 );
+drop table if exists scores;
+create table scores(
+  id integer primary key autoincrement,
+  game_id integer not NULL,
+  player_id integer not NULL,
+  score REAL not null
+);
+
